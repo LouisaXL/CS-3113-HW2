@@ -8,6 +8,15 @@
 * Academic Misconduct.
 **/
 
+
+
+/* 
+SHUSH I KNOW DOING A LIST WOULD BE EASIER FOR MULTIPLE BALLS
+NO TENGO TIEMPO
+*/
+
+
+
 #define GL_SILENCE_DEPRECATION
 #define STB_IMAGE_IMPLEMENTATION
 #define LOG(argument) std::cout << argument << '\n'
@@ -53,9 +62,6 @@ constexpr char  EMAIL_SPRITE_FILEPATH[] = "email.png",
                 LEFTWIN_SPRITE_FILEPATH[] = "left-win.png",
                 RIGHTWIN_SPRITE_FILEPATH[] = "right-win.png";
 
-// TODO: GET RID OF ROT INCREMENT (AFTER UNDERSTANDING)
-// constexpr float ROT_INCREMENT = 1.0f;
-
 SDL_Window* g_display_window;
 AppStatus g_app_status = RUNNING;
 ShaderProgram g_shader_program = ShaderProgram();
@@ -64,6 +70,8 @@ glm::mat4   g_view_matrix,
             g_person1_matrix,
             g_person2_matrix,
             g_email1_matrix,
+            g_email2_matrix,
+            g_email3_matrix,
             g_projection_matrix,
             g_leftwin_matrix,
             g_rightwin_matrix;
@@ -90,9 +98,16 @@ glm::vec3 g_person2_position = glm::vec3(0.0f, 0.0f, 0.0f);
 glm::vec3 g_person2_movement = glm::vec3(0.0f, 0.0f, 0.0f);
 glm::vec3 g_person2_velocity = glm::vec3(0.0f, 0.5f, 0.0f);
 
-glm::vec3 g_email_position = glm::vec3(0.0f, 0.0f, 0.0f);
-glm::vec3 g_email_movement = glm::vec3(0.0f, 0.0f, 0.0f);
-glm::vec3 g_email_velocity = glm::vec3(1.5f, 1.0f, 0.0f);
+glm::vec3 g_email1_position = glm::vec3(0.0f, 0.0f, 0.0f);      // email positions
+glm::vec3 g_email2_position = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 g_email3_position = glm::vec3(0.0f, 0.0f, 0.0f);      
+glm::vec3 g_email1_movement = glm::vec3(0.0f, 0.0f, 0.0f);      // email movement
+glm::vec3 g_email2_movement = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 g_email3_movement = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 g_email1_velocity = glm::vec3(1.5f, 1.0f, 0.0f);      // email velocities
+glm::vec3 g_email2_velocity = glm::vec3(-0.8f, 1.1f, 0.0f);
+glm::vec3 g_email3_velocity = glm::vec3(-1.2f, -1.0f, 0.0f);
+
 
 float g_person_speed = 20.0f;                
 float g_email_speed = 1.0f;
@@ -101,7 +116,6 @@ bool no_friend = false;
 int curr_balls = 1;
 bool end_game = false;
 int who_win = 0;
-int player2_direction = 1.0;        // DONT NEED
 
 GLuint  g_email_texture_id,
         g_person_texture_id,
@@ -172,6 +186,8 @@ void initialise()
     g_person1_matrix = glm::mat4(1.0f);
     g_person2_matrix = glm::mat4(1.0f);
     g_email1_matrix = glm::mat4(1.0f);
+    g_email2_matrix = glm::mat4(1.0f);
+    g_email3_matrix = glm::mat4(1.0f);
     g_leftwin_matrix = glm::mat4(1.0f);
     g_rightwin_matrix = glm::mat4(1.0f);
 
@@ -303,12 +319,31 @@ void update() {
         g_person2_movement.y = g_person2_velocity.y;
     }
 
-    // EMAIL MOVEMENT
-    g_email_movement.x = g_email_velocity.x;
-    g_email_movement.y = g_email_velocity.y;
+    /* EMAIL MOVEMENTs */
+    g_email1_movement.x = g_email1_velocity.x;
+    g_email1_movement.y = g_email1_velocity.y;
     if (end_game == false)
     {
-        g_email_position += g_email_movement * delta_time;
+        g_email1_position += g_email1_movement * delta_time;
+    }
+
+    // 2 balls, update
+    if (end_game == false && curr_balls == 2)
+    {
+        g_email2_movement.x = g_email2_velocity.x;
+        g_email2_movement.y = g_email2_velocity.y;
+        g_email2_position += g_email2_movement * delta_time;
+    } 
+    // 3 balls, update
+    else if (end_game == false && curr_balls == 3)
+    {
+        g_email2_movement.x = g_email2_velocity.x;
+        g_email2_movement.y = g_email2_velocity.y;
+        g_email2_position += g_email2_movement * delta_time;
+
+        g_email3_movement.x = g_email3_velocity.x;
+        g_email3_movement.y = g_email2_velocity.y;
+        g_email3_position += g_email3_movement * delta_time;
     }
 
     /* ACCUMULATOR LOGIC */
@@ -325,17 +360,34 @@ void update() {
     g_person2_matrix = glm::translate(g_person2_matrix, INIT_PERSON2_POSITION);
     g_person2_matrix = glm::translate(g_person2_matrix, g_person2_position);
 
+    /* INIT WIN MATRIX */
     g_leftwin_matrix = glm::mat4(1.0f);
     g_rightwin_matrix = glm::mat4(1.0f);
 
     // AUTO MOVEMENTS 
     g_email1_matrix = glm::mat4(1.0f);
-    g_email1_matrix = glm::translate(g_email1_matrix, g_email_position);
+    g_email1_matrix = glm::translate(g_email1_matrix, g_email1_position);
+
+    g_email2_matrix = glm::mat4(1.0f);
+    g_email3_matrix = glm::mat4(1.0f);
+
+    if (curr_balls == 2)
+    {
+        g_email2_matrix = glm::translate(g_email2_matrix, g_email2_position);
+    }
+    else if (curr_balls == 3)
+    {
+        g_email2_matrix = glm::translate(g_email2_matrix, g_email2_position);
+        g_email3_matrix = glm::translate(g_email3_matrix, g_email3_position);
+    }
 
     /* INIT SCALING */          
     g_person1_matrix = glm::scale(g_person1_matrix, INIT_PERSON_SCALE);
     g_person2_matrix = glm::scale(g_person2_matrix, INIT_PERSON_SCALE);
     g_email1_matrix = glm::scale(g_email1_matrix, INIT_EMAIL_SCALE);
+    g_email2_matrix = glm::scale(g_email2_matrix, INIT_EMAIL_SCALE);
+    g_email3_matrix = glm::scale(g_email3_matrix, INIT_EMAIL_SCALE);
+
 
     g_leftwin_matrix = glm::scale(g_leftwin_matrix, INIT_WIN_SCALE);
     g_rightwin_matrix = glm::scale(g_rightwin_matrix, INIT_WIN_SCALE);
@@ -343,38 +395,89 @@ void update() {
 
     /* COLLISION */
 
-    // calculate box to box collision values
-    float x_distance1 = fabs(g_email_position.x + INIT_EMAIL_POSITION.x - g_person1_position.x - INIT_PERSON1_POSITION.x) -
+    // EMAIL 1: calculate box to box collision values
+    float email1_x_distance1 = fabs(g_email1_position.x + INIT_EMAIL_POSITION.x - g_person1_position.x - INIT_PERSON1_POSITION.x) -
         ((INIT_PERSON_SCALE.x + INIT_EMAIL_SCALE.x) / 2.0f);
 
-    float y_distance1 = fabs(g_email_position.y + INIT_EMAIL_POSITION.x - g_person1_position.y - INIT_PERSON1_POSITION.y) -
+    float email1_y_distance1 = fabs(g_email1_position.y + INIT_EMAIL_POSITION.x - g_person1_position.y - INIT_PERSON1_POSITION.y) -
         ((INIT_PERSON_SCALE.y + INIT_EMAIL_SCALE.y) / 2.0f);
 
-    float x_distance2 = fabs(g_email_position.x + INIT_EMAIL_POSITION.x - g_person2_position.x - INIT_PERSON2_POSITION.x) -
+    float email1_x_distance2 = fabs(g_email1_position.x + INIT_EMAIL_POSITION.x - g_person2_position.x - INIT_PERSON2_POSITION.x) -
         ((INIT_PERSON_SCALE.x + INIT_EMAIL_SCALE.x) / 2.0f);
 
-    float y_distance2 = fabs(g_email_position.y + INIT_EMAIL_POSITION.x - g_person2_position.y - INIT_PERSON2_POSITION.y) -
+    float email1_y_distance2 = fabs(g_email1_position.y + INIT_EMAIL_POSITION.x - g_person2_position.y - INIT_PERSON2_POSITION.y) -
         ((INIT_PERSON_SCALE.y + INIT_EMAIL_SCALE.y) / 2.0f);
 
-    // collision: email & person
-    if ((x_distance1 < 0.0f && y_distance1 < 0.0f) && (g_email_position.x < INIT_PERSON1_POSITION.x))
+    // EMAIL 2
+    float email2_x_distance1 = fabs(g_email2_position.x + INIT_EMAIL_POSITION.x - g_person1_position.x - INIT_PERSON1_POSITION.x) -
+        ((INIT_PERSON_SCALE.x + INIT_EMAIL_SCALE.x) / 2.0f);
+
+    float email2_y_distance1 = fabs(g_email2_position.y + INIT_EMAIL_POSITION.x - g_person1_position.y - INIT_PERSON1_POSITION.y) -
+        ((INIT_PERSON_SCALE.y + INIT_EMAIL_SCALE.y) / 2.0f);
+
+    float email2_x_distance2 = fabs(g_email2_position.x + INIT_EMAIL_POSITION.x - g_person2_position.x - INIT_PERSON2_POSITION.x) -
+        ((INIT_PERSON_SCALE.x + INIT_EMAIL_SCALE.x) / 2.0f);
+
+    float email2_y_distance2 = fabs(g_email2_position.y + INIT_EMAIL_POSITION.x - g_person2_position.y - INIT_PERSON2_POSITION.y) -
+        ((INIT_PERSON_SCALE.y + INIT_EMAIL_SCALE.y) / 2.0f);
+
+    // EMAIL 3
+    float email3_x_distance1 = fabs(g_email3_position.x + INIT_EMAIL_POSITION.x - g_person1_position.x - INIT_PERSON1_POSITION.x) -
+        ((INIT_PERSON_SCALE.x + INIT_EMAIL_SCALE.x) / 2.0f);
+
+    float email3_y_distance1 = fabs(g_email3_position.y + INIT_EMAIL_POSITION.x - g_person1_position.y - INIT_PERSON1_POSITION.y) -
+        ((INIT_PERSON_SCALE.y + INIT_EMAIL_SCALE.y) / 2.0f);
+
+    float email3_x_distance2 = fabs(g_email3_position.x + INIT_EMAIL_POSITION.x - g_person2_position.x - INIT_PERSON2_POSITION.x) -
+        ((INIT_PERSON_SCALE.x + INIT_EMAIL_SCALE.x) / 2.0f);
+
+    float email3_y_distance2 = fabs(g_email3_position.y + INIT_EMAIL_POSITION.x - g_person2_position.y - INIT_PERSON2_POSITION.y) -
+        ((INIT_PERSON_SCALE.y + INIT_EMAIL_SCALE.y) / 2.0f);
+
+    // EMAIL 1 & PERSON COLLISION
+    if ((email1_x_distance1 < 0.0f && email1_y_distance1 < 0.0f))
     {
-        g_email_velocity.x = -g_email_velocity.x;
-        g_email_velocity.y = -g_email_velocity.y;
+        g_email1_velocity.x = -g_email1_velocity.x;
+        g_email1_velocity.y = -g_email1_velocity.y;
     }
-    else if (x_distance2 < 0.0f && y_distance2 < 0.0f)
+    else if (email1_x_distance2 < 0.0f && email1_y_distance2 < 0.0f)
     {
-        g_email_velocity.x = -g_email_velocity.x;
-        g_email_velocity.y = -g_email_velocity.y;
+        g_email1_velocity.x = -g_email1_velocity.x;
+        g_email1_velocity.y = -g_email1_velocity.y;
     }
 
+    // EMAIL 2 & PERSON COLLISION
+    if ((email2_x_distance1 < 0.0f && email2_y_distance1 < 0.0f))
+    {
+        g_email2_velocity.x = -g_email2_velocity.x;
+        g_email2_velocity.y = -g_email2_velocity.y;
+    }
+    else if (email2_x_distance2 < 0.0f && email2_y_distance2 < 0.0f)
+    {
+        g_email2_velocity.x = -g_email2_velocity.x;
+        g_email2_velocity.y = -g_email2_velocity.y;
+    }
+
+    // EMAIL 3 & PERSON COLLISION
+    if (email3_x_distance1 < 0.0f && email3_y_distance1 < 0.0f)
+    {
+        g_email3_velocity.x = -g_email3_velocity.x;
+        g_email3_velocity.y = -g_email3_velocity.y;
+    }
+    else if (email3_x_distance2 < 0.0f && email3_y_distance2 < 0.0f)
+    {
+        g_email3_velocity.x = -g_email3_velocity.x;
+        g_email3_velocity.y = -g_email3_velocity.y;
+    }
 
     /* BORDER */
+
+    // PERSON BORDERS
+
     if (g_person1_position.y < -2.5) {
         // border at bottom
         g_person1_position.y = -2.5;  
-    }
-    else if (g_person1_position.y > 2.5) {
+    } else if (g_person1_position.y > 2.5) {
         // border at top
         g_person1_position.y = 2.5;
     }
@@ -384,33 +487,45 @@ void update() {
         g_person2_position.y = -2.5;
 
         if (no_friend) { g_person2_velocity.y = -g_person2_velocity.y; }
-    }
-    else if (g_person2_position.y > 2.5) {
+    } else if (g_person2_position.y > 2.5) {
         // border at top
         g_person2_position.y = 2.5;
 
         if (no_friend) { g_person2_velocity.y = -g_person2_velocity.y; }
     }
 
-    if (g_email_position.y <= -2.5 || g_email_position.y >= 2.5) {
+    // EMAIL 1 BORDER
+    if (g_email1_position.y <= -2.5 || g_email1_position.y >= 2.5) {
         // ball reach up or down
-        g_email_velocity.y = -g_email_velocity.y;
+        g_email1_velocity.y = -g_email1_velocity.y;
+    }
+
+    // EMAIL 2 BORDER
+    if (g_email2_position.y <= -2.5 || g_email2_position.y >= 2.5) {
+        // ball reach up or down
+        g_email2_velocity.y = -g_email2_velocity.y;
+    }
+
+    // EMAIL 3 BORDER
+    if (g_email3_position.y <= -2.5 || g_email3_position.y >= 2.5) {
+        // ball reach up or down
+        g_email3_velocity.y = -g_email3_velocity.y;
     }
 
     /* TERMINATION FOR EMAIL REACH END */
-    if (g_email_position.x < -4.5f) {
+    if (g_email1_position.x < -4.5f || g_email2_position.x < -4.5f || g_email3_position.x < -4.5f) {
         // right win
         end_game = true;
         who_win = 1;
     }
-    else if (g_email_position.x > 4.5f)
+    else if (g_email1_position.x > 4.5f || g_email2_position.x > 4.5f || g_email3_position.x > 4.5f)
     {
         // left win
         end_game = true;
         who_win = 0;
     }
-    // TODO: SHOW END GAME SCREEN
 
+    
 }
 
 void draw_object(glm::mat4& object_g_model_matrix, GLuint& object_texture_id)
@@ -420,7 +535,6 @@ void draw_object(glm::mat4& object_g_model_matrix, GLuint& object_texture_id)
     glDrawArrays(GL_TRIANGLES, 0, 6); // we are now drawing 2 triangles, so use 6, not 3
 }
 
-// TODO: what does render do?
 void render()
 {
     glClear(GL_COLOR_BUFFER_BIT);
@@ -451,6 +565,17 @@ void render()
     draw_object(g_person1_matrix, g_person_texture_id);
     draw_object(g_person2_matrix, g_person_texture_id);
     draw_object(g_email1_matrix, g_email_texture_id);
+
+    // 1+ ball
+    if (curr_balls == 2)
+    {
+        draw_object(g_email2_matrix, g_email_texture_id);
+    }
+    else if (curr_balls == 3) {
+        draw_object(g_email2_matrix, g_email_texture_id);
+        draw_object(g_email3_matrix, g_email_texture_id);
+    }
+
     //draw_object(g_leftwin_matrix, g_leftwin_texture_id);
     if (end_game && who_win == 0)
     {
