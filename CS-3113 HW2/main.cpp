@@ -49,7 +49,9 @@ constexpr GLint NUMBER_OF_TEXTURES = 1,                 // to be generated, that
                 TEXTURE_BORDER = 0;                     // this value MUST be zero
 
 constexpr char  EMAIL_SPRITE_FILEPATH[] = "email.png",
-                PERSON_SPRITE_FILEPATH[] = "person.png";
+                PERSON_SPRITE_FILEPATH[] = "person.png",
+                LEFTWIN_SPRITE_FILEPATH[] = "left-win.png",
+                RIGHTWIN_SPRITE_FILEPATH[] = "right-win.png";
 
 // TODO: GET RID OF ROT INCREMENT (AFTER UNDERSTANDING)
 // constexpr float ROT_INCREMENT = 1.0f;
@@ -62,7 +64,9 @@ glm::mat4   g_view_matrix,
             g_person1_matrix,
             g_person2_matrix,
             g_email1_matrix,
-            g_projection_matrix;
+            g_projection_matrix,
+            g_leftwin_matrix,
+            g_rightwin_matrix;
 
 constexpr float BASE_SCALE = 1.0f,
                 MAX_AMPLITUDE = 0.1f,
@@ -71,16 +75,13 @@ constexpr float BASE_SCALE = 1.0f,
 float g_previous_ticks = 0.0f;
 float g_pulse_time = 0.0f;
 
-// TODO: NOT NEED FOLLOWING?
-// 
-//float g_transform_person1_x = 0.0f;
-//float g_transform_person1_y = 0.0f;
 
 constexpr glm::vec3 INIT_PERSON_SCALE = glm::vec3(1.5f, 1.75f, 0.0f),
                     INIT_PERSON1_POSITION = glm::vec3(3.5f, 0.0f, 0.0f),
                     INIT_PERSON2_POSITION = glm::vec3(-3.5f, 0.0f, 0.0f),
                     INIT_EMAIL_SCALE = glm::vec3(0.7f, 0.7f, 0.0f),
-                    INIT_EMAIL_POSITION = glm::vec3(0.0f, 0.0f, 0.0f);
+                    INIT_EMAIL_POSITION = glm::vec3(0.0f, 0.0f, 0.0f),
+                    INIT_WIN_SCALE = glm::vec3(12.0f, 8.0f, 0.0f);
 
 glm::vec3 g_person1_position = glm::vec3(0.0f, 0.0f, 0.0f);
 glm::vec3 g_person1_movement = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -93,15 +94,19 @@ glm::vec3 g_email_position = glm::vec3(0.0f, 0.0f, 0.0f);
 glm::vec3 g_email_movement = glm::vec3(0.0f, 0.0f, 0.0f);
 glm::vec3 g_email_velocity = glm::vec3(1.5f, 1.0f, 0.0f);
 
-float g_person_speed = 20.0f;                // move 1 unit per second
+float g_person_speed = 20.0f;                
 float g_email_speed = 1.0f;
 
 bool no_friend = false;
 int curr_balls = 1;
+bool end_game = false;
+int who_win = 0;
 int player2_direction = 1.0;        // DONT NEED
 
 GLuint  g_email_texture_id,
-        g_person_texture_id;
+        g_person_texture_id,
+        g_leftwin_texture_id,
+        g_rightwin_texture_id;
 
 
 
@@ -167,6 +172,8 @@ void initialise()
     g_person1_matrix = glm::mat4(1.0f);
     g_person2_matrix = glm::mat4(1.0f);
     g_email1_matrix = glm::mat4(1.0f);
+    g_leftwin_matrix = glm::mat4(1.0f);
+    g_rightwin_matrix = glm::mat4(1.0f);
 
     // 
 
@@ -183,6 +190,8 @@ void initialise()
     // LOAD TEXTURE
     g_email_texture_id = load_texture(EMAIL_SPRITE_FILEPATH);
     g_person_texture_id = load_texture(PERSON_SPRITE_FILEPATH);
+    g_leftwin_texture_id = load_texture(LEFTWIN_SPRITE_FILEPATH);
+    g_rightwin_texture_id = load_texture(RIGHTWIN_SPRITE_FILEPATH);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -297,7 +306,10 @@ void update() {
     // EMAIL MOVEMENT
     g_email_movement.x = g_email_velocity.x;
     g_email_movement.y = g_email_velocity.y;
-    g_email_position += g_email_movement * delta_time;
+    if (end_game == false)
+    {
+        g_email_position += g_email_movement * delta_time;
+    }
 
     /* ACCUMULATOR LOGIC */
     // Add: direction * units per second * elapsed time
@@ -313,6 +325,9 @@ void update() {
     g_person2_matrix = glm::translate(g_person2_matrix, INIT_PERSON2_POSITION);
     g_person2_matrix = glm::translate(g_person2_matrix, g_person2_position);
 
+    g_leftwin_matrix = glm::mat4(1.0f);
+    g_rightwin_matrix = glm::mat4(1.0f);
+
     // AUTO MOVEMENTS 
     g_email1_matrix = glm::mat4(1.0f);
     g_email1_matrix = glm::translate(g_email1_matrix, g_email_position);
@@ -321,6 +336,9 @@ void update() {
     g_person1_matrix = glm::scale(g_person1_matrix, INIT_PERSON_SCALE);
     g_person2_matrix = glm::scale(g_person2_matrix, INIT_PERSON_SCALE);
     g_email1_matrix = glm::scale(g_email1_matrix, INIT_EMAIL_SCALE);
+
+    g_leftwin_matrix = glm::scale(g_leftwin_matrix, INIT_WIN_SCALE);
+    g_rightwin_matrix = glm::scale(g_rightwin_matrix, INIT_WIN_SCALE);
 
 
     /* COLLISION */
@@ -380,9 +398,16 @@ void update() {
     }
 
     /* TERMINATION FOR EMAIL REACH END */
-    if (g_email_position.x < -4.5f || g_email_position.x > 4.5f) {
-        g_app_status = TERMINATED;
-        // TODO: END GAME SCREEN
+    if (g_email_position.x < -4.5f) {
+        // right win
+        end_game = true;
+        who_win = 1;
+    }
+    else if (g_email_position.x > 4.5f)
+    {
+        // left win
+        end_game = true;
+        who_win = 0;
     }
     // TODO: SHOW END GAME SCREEN
 
@@ -426,6 +451,17 @@ void render()
     draw_object(g_person1_matrix, g_person_texture_id);
     draw_object(g_person2_matrix, g_person_texture_id);
     draw_object(g_email1_matrix, g_email_texture_id);
+    //draw_object(g_leftwin_matrix, g_leftwin_texture_id);
+    if (end_game && who_win == 0)
+    {
+        // left win
+        draw_object(g_leftwin_matrix, g_leftwin_texture_id);
+    }
+    else if (end_game && who_win == 1)
+    {
+        // right win
+        draw_object(g_rightwin_matrix, g_rightwin_texture_id);
+    }
 
     // We disable two attribute arrays now
     glDisableVertexAttribArray(g_shader_program.get_position_attribute());
